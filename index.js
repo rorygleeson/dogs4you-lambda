@@ -38,13 +38,14 @@ async function getYouTubeAPIKey() {
             const buff = Buffer.from(data.SecretBinary, 'base64');
             return buff.toString('ascii');
         }
+        
     } catch (error) {
+        
         console.error(`Error retrieving secret: ${error.message}`);
         throw new Error(`Failed to retrieve YouTube API key: ${error.message}`);
     }
 
-console.log('Retrieved secret type:', typeof data.SecretString);
-console.log('Retrieved secret (first few chars):', data.SecretString.substring(0, 10) + '...');
+
 }
 
 // Function to fetch dog videos from YouTube API
@@ -461,6 +462,11 @@ exports.handler = async (event) => {
         console.log('Retrieving YouTube API key from Secrets Manager');
         const apiKey = await getYouTubeAPIKey();
         
+        //
+        console.log('Retrieved secret type:', typeof data.SecretString);
+        console.log('Retrieved secret (first few chars):', data.SecretString.substring(0, 10) + '...');
+
+
         // Fetch videos from YouTube API
         console.log('Fetching videos from YouTube API');
         const videos = await fetchDogVideos(apiKey);
