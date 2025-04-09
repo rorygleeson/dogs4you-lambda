@@ -129,7 +129,7 @@ function generateHTML(videos) {
     <header>
         <div class="container">
             <h1>Funny Dog Videos</h1>
-            <p> Doggy Dopamine Hits ! </p>
+            <p> Doggy Dopamine Hits !!! </p>
            
             <p id="last-updated" class="last-updated">${lastUpdatedText}</p>
         </div>
