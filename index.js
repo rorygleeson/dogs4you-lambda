@@ -42,6 +42,9 @@ async function getYouTubeAPIKey() {
         console.error(`Error retrieving secret: ${error.message}`);
         throw new Error(`Failed to retrieve YouTube API key: ${error.message}`);
     }
+
+console.log('Retrieved secret type:', typeof data.SecretString);
+console.log('Retrieved secret (first few chars):', data.SecretString.substring(0, 10) + '...');
 }
 
 // Function to fetch dog videos from YouTube API
