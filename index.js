@@ -236,7 +236,7 @@ function generateHTML(videos) {
         .video-counter {
             position: absolute;
             top: 10px;
-            right: 10px;
+            left: 10px;
             background-color: rgba(0,0,0,0.7);
             color: white;
             padding: 5px 10px;
