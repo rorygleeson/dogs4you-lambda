@@ -186,6 +186,90 @@ function generateHTML(videos) {
         .video-item.watched .played-indicator {
             display: inline-block;
         }
+        
+        /* Play All button styles */
+        .play-all-button {
+            display: block;
+            margin: 20px auto;
+            padding: 12px 24px;
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .play-all-button:hover {
+            background-color: #e64a19;
+        }
+        
+        .play-all-button i {
+            margin-right: 8px;
+        }
+        
+        /* Queue indicator styles */
+        .queue-indicator {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            display: none;
+        }
+        
+        .video-item.in-queue .queue-indicator {
+            display: block;
+        }
+        
+        .video-item.current-playing {
+            border: 3px solid #ff5722;
+        }
+        
+        /* Video counter styles */
+        .video-counter {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            z-index: 1001;
+        }
+        
+        /* Next/Previous button styles */
+        .player-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        
+        .player-controls button {
+            padding: 8px 16px;
+            background-color: #444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .player-controls button:hover {
+            background-color: #666;
+        }
+        
+        .player-controls button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
     </style>
 
     <!-- Google tag (gtag.js) -->
@@ -210,6 +294,11 @@ function generateHTML(videos) {
     </header>
 
     <main class="container">
+        <!-- Play All Button -->
+        <button id="play-all-button" class="play-all-button">
+            <i class="fas fa-play-circle"></i> Play All Videos
+        </button>
+        
         <div id="videos-container" class="videos-grid">
             ${videoItemsHTML}
         </div>
@@ -217,10 +306,19 @@ function generateHTML(videos) {
         <div id="video-modal" class="modal">
             <div class="modal-content">
                 <span class="close-button">&times;</span>
+                <div id="video-counter" class="video-counter"></div>
                 <div id="video-player"></div>
                 <div id="video-info">
                     <h3 id="video-title"></h3>
                     <p id="video-description"></p>
+                    <div id="player-controls" class="player-controls">
+                        <button id="prev-video-button" disabled>
+                            <i class="fas fa-step-backward"></i> Previous
+                        </button>
+                        <button id="next-video-button">
+                            <i class="fas fa-step-forward"></i> Next
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -239,10 +337,17 @@ function generateHTML(videos) {
         const videoPlayer = document.getElementById('video-player');
         const videoTitle = document.getElementById('video-title');
         const videoDescription = document.getElementById('video-description');
+        const playAllButton = document.getElementById('play-all-button');
+        const prevVideoButton = document.getElementById('prev-video-button');
+        const nextVideoButton = document.getElementById('next-video-button');
+        const videoCounter = document.getElementById('video-counter');
         
-        // Global variable to store YouTube player instance
+        // Global variables
         let youtubePlayer = null;
         let videoEndTimer = null;
+        let videoQueue = [];
+        let currentQueueIndex = -1;
+        let isPlayingAll = false;
         
         // Cookie functions for persistence
         function setCookie(name, value, days) {
@@ -287,12 +392,128 @@ function generateHTML(videos) {
         // Load watched videos when page loads
         loadWatchedVideosFromCookie();
         
+        // Build video queue from all videos
+        function buildVideoQueue() {
+            videoQueue = [];
+            document.querySelectorAll('.video-item').forEach(item => {
+                videoQueue.push({
+                    element: item,
+                    videoId: item.dataset.videoId,
+                    title: item.dataset.title,
+                    description: item.dataset.description
+                });
+            });
+            return videoQueue;
+        }
+        
+        // Update video counter display
+        function updateVideoCounter() {
+            if (isPlayingAll && currentQueueIndex >= 0) {
+                videoCounter.textContent = `Video ${currentQueueIndex + 1} of ${videoQueue.length}`;
+                videoCounter.style.display = 'block';
+            } else {
+                videoCounter.style.display = 'none';
+            }
+        }
+        
+        // Update player controls state
+        function updatePlayerControls() {
+            if (isPlayingAll) {
+                prevVideoButton.disabled = currentQueueIndex <= 0;
+                nextVideoButton.disabled = currentQueueIndex >= videoQueue.length - 1;
+                
+                // Show the controls
+                document.getElementById('player-controls').style.display = 'flex';
+            } else {
+                // Hide the controls when not in play all mode
+                document.getElementById('player-controls').style.display = 'none';
+            }
+        }
+        
+        // Play All button click handler
+        playAllButton.addEventListener('click', () => {
+            // Build the queue
+            buildVideoQueue();
+            
+            // Set play all mode
+            isPlayingAll = true;
+            currentQueueIndex = 0;
+            
+            // Start playing the first video
+            if (videoQueue.length > 0) {
+                const firstVideo = videoQueue[0];
+                playVideoFromQueue(0);
+            }
+        });
+        
+        // Previous video button click handler
+        prevVideoButton.addEventListener('click', () => {
+            if (isPlayingAll && currentQueueIndex > 0) {
+                playVideoFromQueue(currentQueueIndex - 1);
+            }
+        });
+        
+        // Next video button click handler
+        nextVideoButton.addEventListener('click', () => {
+            if (isPlayingAll && currentQueueIndex < videoQueue.length - 1) {
+                playVideoFromQueue(currentQueueIndex + 1);
+            }
+        });
+        
+        // Play video from queue
+        function playVideoFromQueue(index) {
+            if (index >= 0 && index < videoQueue.length) {
+                currentQueueIndex = index;
+                const video = videoQueue[index];
+                
+                // Remove current-playing class from all videos
+                document.querySelectorAll('.video-item').forEach(item => {
+                    item.classList.remove('current-playing');
+                });
+                
+                // Add current-playing class to current video
+                video.element.classList.add('current-playing');
+                
+                // Mark video as watched
+                watchedVideos.add(video.videoId);
+                video.element.classList.add('watched');
+                
+                // Save to cookie
+                saveWatchedVideosToCookie();
+                
+                // Open the video in the modal
+                openVideoModal(video.videoId, video.title, video.description, video.element);
+                
+                // Update counter and controls
+                updateVideoCounter();
+                updatePlayerControls();
+                
+                // Scroll to the current video if not visible
+                setTimeout(() => {
+                    const rect = video.element.getBoundingClientRect();
+                    const isVisible = (
+                        rect.top >= 0 &&
+                        rect.left >= 0 &&
+                        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+                    );
+                    
+                    if (!isVisible) {
+                        video.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 500);
+            }
+        }
+        
         // Add click event to all video items
         document.querySelectorAll('.video-item').forEach(item => {
             item.addEventListener('click', () => {
                 const videoId = item.dataset.videoId;
                 const title = item.dataset.title;
                 const description = item.dataset.description;
+                
+                // Reset play all mode when clicking individual videos
+                isPlayingAll = false;
                 
                 // Mark video as watched
                 watchedVideos.add(videoId);
@@ -301,7 +522,16 @@ function generateHTML(videos) {
                 // Save to cookie
                 saveWatchedVideosToCookie();
                 
+                // Remove current-playing class from all videos
+                document.querySelectorAll('.video-item').forEach(el => {
+                    el.classList.remove('current-playing');
+                });
+                
                 openVideoModal(videoId, title, description, item);
+                
+                // Update counter and controls for individual video mode
+                updateVideoCounter();
+                updatePlayerControls();
             });
         });
         
@@ -422,10 +652,18 @@ function generateHTML(videos) {
         function onPlayerStateChange(event) {
             // State 0 means the video has ended
             if (event.data === 0) {
-                // Add a 1-second delay before closing
-                videoEndTimer = setTimeout(() => {
-                    closeModal();
-                }, 1000);
+                if (isPlayingAll && currentQueueIndex < videoQueue.length - 1) {
+                    // Play next video in queue after a short delay
+                    videoEndTimer = setTimeout(() => {
+                        playVideoFromQueue(currentQueueIndex + 1);
+                    }, 1000);
+                } else {
+                    // Add a 1-second delay before closing if not in play all mode
+                    // or if we've reached the end of the queue
+                    videoEndTimer = setTimeout(() => {
+                        closeModal();
+                    }, 1000);
+                }
             }
         }
         
@@ -448,6 +686,14 @@ function generateHTML(videos) {
             
             // Enable scrolling on body
             document.body.style.overflow = 'auto';
+            
+            // Reset play all mode
+            isPlayingAll = false;
+            
+            // Remove current-playing class from all videos
+            document.querySelectorAll('.video-item').forEach(item => {
+                item.classList.remove('current-playing');
+            });
         }
         
         // Apply watched status to videos on page load
