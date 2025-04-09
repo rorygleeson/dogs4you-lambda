@@ -18,19 +18,23 @@ async function getYouTubeAPIKey() {
         console.log(`Retrieving YouTube API key from Secrets Manager: ${SECRET_NAME}`);
         const data = await secretsManager.getSecretValue({ SecretId: SECRET_NAME }).promise();
         
-        // Log the retrieved value for debugging
+        let apiKey = null;
+        
+        // Extract the actual secret value
         if ('SecretString' in data) {
-            console.log('Retrieved secret type:', typeof data.SecretString);
-            console.log('Retrieved secret (first few chars):', data.SecretString.substring(0, 10) + '...');
-            
-            // Just return the string directly without any parsing
-            return data.SecretString.trim();
+            apiKey = data.SecretString;
         } else if (data.SecretBinary) {
-            // If the secret is stored as binary
             const buff = Buffer.from(data.SecretBinary, 'base64');
-            return buff.toString('ascii').trim();
+            apiKey = buff.toString('ascii');
+        }
+        
+        // Trim any whitespace and validate
+        if (apiKey) {
+            apiKey = apiKey.trim();
+            console.log(`Successfully retrieved API key (first few chars): ${apiKey.substring(0, 5)}...`);
+            return apiKey;
         } else {
-            throw new Error('Secret is not stored as a string or binary');
+            throw new Error('Retrieved secret is empty or invalid');
         }
     } catch (error) {
         console.error(`Error retrieving secret: ${error.message}`);
