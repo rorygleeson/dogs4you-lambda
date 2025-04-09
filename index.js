@@ -250,6 +250,7 @@ function generateHTML(videos) {
             display: flex;
             justify-content: space-between;
             margin-top: 10px;
+            margin-bottom: 15px;
         }
         
         .player-controls button {
@@ -269,6 +270,18 @@ function generateHTML(videos) {
         .player-controls button:disabled {
             background-color: #ccc;
             cursor: not-allowed;
+        }
+        
+        /* Video info text styles */
+        #video-info h3 {
+            font-size: 1.1em;
+            margin-top: 0;
+        }
+        
+        #video-info p {
+            font-size: 0.9em;
+            line-height: 1.4;
+            color: #333;
         }
     </style>
 
@@ -308,17 +321,18 @@ function generateHTML(videos) {
                 <span class="close-button">&times;</span>
                 <div id="video-counter" class="video-counter"></div>
                 <div id="video-player"></div>
+                <!-- Player controls moved up, directly under the video player -->
+                <div id="player-controls" class="player-controls">
+                    <button id="prev-video-button" disabled>
+                        <i class="fas fa-step-backward"></i> Previous
+                    </button>
+                    <button id="next-video-button">
+                        <i class="fas fa-step-forward"></i> Next
+                    </button>
+                </div>
                 <div id="video-info">
                     <h3 id="video-title"></h3>
                     <p id="video-description"></p>
-                    <div id="player-controls" class="player-controls">
-                        <button id="prev-video-button" disabled>
-                            <i class="fas fa-step-backward"></i> Previous
-                        </button>
-                        <button id="next-video-button">
-                            <i class="fas fa-step-forward"></i> Next
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
