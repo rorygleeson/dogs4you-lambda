@@ -3,18 +3,51 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-// YouTube API Key
-const API_KEY = 'AIzaSyBK3tknA6n4eNcDhcGjbOxYgJ7RH05o4lw';
+// Constants
 const MAX_RESULTS = 200;
 const S3_BUCKET = 'doggyhits.com';
+const SECRET_NAME = 'DoggyHitsYouTubeAPIKey';
 
-// Initialize S3 client
+// Initialize AWS clients
 const s3 = new AWS.S3();
+const secretsManager = new AWS.SecretsManager();
+
+// Function to get YouTube API Key from Secrets Manager
+async function getYouTubeAPIKey() {
+    try {
+        console.log(`Retrieving YouTube API key from Secrets Manager: ${SECRET_NAME}`);
+        const data = await secretsManager.getSecretValue({ SecretId: SECRET_NAME }).promise();
+        
+        // Depending on how you stored the secret, you might need to parse it
+        if ('SecretString' in data) {
+            try {
+                // If the secret is stored as JSON
+                const secret = JSON.parse(data.SecretString);
+                if (secret.apiKey) {
+                    return secret.apiKey;
+                } else {
+                    // If the secret is just the API key as a string in JSON format
+                    return data.SecretString;
+                }
+            } catch (e) {
+                // If the secret is stored as a plain string
+                return data.SecretString;
+            }
+        } else {
+            // If the secret is stored as binary
+            const buff = Buffer.from(data.SecretBinary, 'base64');
+            return buff.toString('ascii');
+        }
+    } catch (error) {
+        console.error(`Error retrieving secret: ${error.message}`);
+        throw new Error(`Failed to retrieve YouTube API key: ${error.message}`);
+    }
+}
 
 // Function to fetch dog videos from YouTube API
-async function fetchDogVideos() {
+async function fetchDogVideos(apiKey) {
     return new Promise((resolve, reject) => {
-        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${MAX_RESULTS}&q=funny+dogs&type=video&order=date&key=${API_KEY}`;
+        const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${MAX_RESULTS}&q=funny+dogs&type=video&order=date&key=${apiKey}`;
         
         https.get(url, (res) => {
             let data = '';
@@ -421,9 +454,13 @@ exports.handler = async (event) => {
     try {
         console.log('Starting DoggyHits Lambda function');
         
+        // Get YouTube API key from Secrets Manager
+        console.log('Retrieving YouTube API key from Secrets Manager');
+        const apiKey = await getYouTubeAPIKey();
+        
         // Fetch videos from YouTube API
         console.log('Fetching videos from YouTube API');
-        const videos = await fetchDogVideos();
+        const videos = await fetchDogVideos(apiKey);
         
         // Generate HTML content
         console.log('Generating HTML content');
