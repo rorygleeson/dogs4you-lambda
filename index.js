@@ -18,23 +18,54 @@ async function getYouTubeAPIKey() {
         console.log(`Retrieving YouTube API key from Secrets Manager: ${SECRET_NAME}`);
         const data = await secretsManager.getSecretValue({ SecretId: SECRET_NAME }).promise();
         
-        let apiKey = null;
+        let secretValue = null;
         
         // Extract the actual secret value
         if ('SecretString' in data) {
-            apiKey = data.SecretString;
+            secretValue = data.SecretString;
         } else if (data.SecretBinary) {
             const buff = Buffer.from(data.SecretBinary, 'base64');
-            apiKey = buff.toString('ascii');
+            secretValue = buff.toString('ascii');
         }
         
-        // Trim any whitespace and validate
-        if (apiKey) {
-            apiKey = apiKey.trim();
-            console.log(`Successfully retrieved API key (first few chars): ${apiKey.substring(0, 5)}...`);
-            return apiKey;
-        } else {
+        if (!secretValue) {
             throw new Error('Retrieved secret is empty or invalid');
+        }
+        
+        // Log the raw secret value for debugging (first few characters)
+        console.log(`Raw secret value (first few chars): ${secretValue.substring(0, 20)}...`);
+        
+        // Parse the JSON structure
+        try {
+            const secretJson = JSON.parse(secretValue);
+            
+            // Check if the secret contains the expected key
+            if (secretJson.DoggyHitsYoutubeAPIkey) {
+                const apiKey = secretJson.DoggyHitsYoutubeAPIkey.trim();
+                console.log(`Successfully extracted API key (first few chars): ${apiKey.substring(0, 5)}...`);
+                return apiKey;
+            } else {
+                // Try alternative key formats in case of case sensitivity issues
+                const possibleKeys = Object.keys(secretJson);
+                console.log(`Available keys in secret: ${JSON.stringify(possibleKeys)}`);
+                
+                // Try to find a key that looks like our target
+                for (const key of possibleKeys) {
+                    if (key.toLowerCase().includes('apikey') || key.toLowerCase().includes('youtube')) {
+                        const apiKey = secretJson[key].trim();
+                        console.log(`Found alternative key "${key}" with value (first few chars): ${apiKey.substring(0, 5)}...`);
+                        return apiKey;
+                    }
+                }
+                
+                throw new Error(`Secret JSON does not contain expected key. Available keys: ${JSON.stringify(possibleKeys)}`);
+            }
+        } catch (parseError) {
+            // If parsing fails, the secret might be a plain string (just the API key)
+            console.log(`JSON parsing failed, treating secret as plain string: ${parseError.message}`);
+            const apiKey = secretValue.trim();
+            console.log(`Using secret as plain string API key (first few chars): ${apiKey.substring(0, 5)}...`);
+            return apiKey;
         }
     } catch (error) {
         console.error(`Error retrieving secret: ${error.message}`);
