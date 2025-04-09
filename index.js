@@ -18,39 +18,30 @@ async function getYouTubeAPIKey() {
         console.log(`Retrieving YouTube API key from Secrets Manager: ${SECRET_NAME}`);
         const data = await secretsManager.getSecretValue({ SecretId: SECRET_NAME }).promise();
         
-        // Depending on how you stored the secret, you might need to parse it
+        // Log the retrieved value for debugging
         if ('SecretString' in data) {
-            try {
-                // If the secret is stored as JSON
-                const secret = JSON.parse(data.SecretString);
-                if (secret.apiKey) {
-                    return secret.apiKey;
-                } else {
-                    // If the secret is just the API key as a string in JSON format
-                    return data.SecretString;
-                }
-            } catch (e) {
-                // If the secret is stored as a plain string
-                return data.SecretString;
-            }
-        } else {
+            console.log('Retrieved secret type:', typeof data.SecretString);
+            console.log('Retrieved secret (first few chars):', data.SecretString.substring(0, 10) + '...');
+            
+            // Just return the string directly without any parsing
+            return data.SecretString.trim();
+        } else if (data.SecretBinary) {
             // If the secret is stored as binary
             const buff = Buffer.from(data.SecretBinary, 'base64');
-            return buff.toString('ascii');
+            return buff.toString('ascii').trim();
+        } else {
+            throw new Error('Secret is not stored as a string or binary');
         }
-        
     } catch (error) {
-        
         console.error(`Error retrieving secret: ${error.message}`);
         throw new Error(`Failed to retrieve YouTube API key: ${error.message}`);
     }
-
-
 }
 
 // Function to fetch dog videos from YouTube API
 async function fetchDogVideos(apiKey) {
     return new Promise((resolve, reject) => {
+        console.log(`Using API key (first few chars): ${apiKey.substring(0, 5)}...`);
         const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${MAX_RESULTS}&q=funny+dogs&type=video&order=date&key=${apiKey}`;
         
         https.get(url, (res) => {
@@ -462,11 +453,11 @@ exports.handler = async (event) => {
         console.log('Retrieving YouTube API key from Secrets Manager');
         const apiKey = await getYouTubeAPIKey();
         
-        //
-        console.log('Retrieved secret type:', typeof data.SecretString);
-        console.log('Retrieved secret (first few chars):', data.SecretString.substring(0, 10) + '...');
-
-
+        // Verify we have a valid API key
+        if (!apiKey || apiKey.length < 10) {
+            throw new Error(`Retrieved API key appears invalid: ${apiKey ? apiKey.substring(0, 3) + '...' : 'empty'}`);
+        }
+        
         // Fetch videos from YouTube API
         console.log('Fetching videos from YouTube API');
         const videos = await fetchDogVideos(apiKey);
