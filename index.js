@@ -409,7 +409,7 @@ function generateHTML(videos) {
         // Update video counter display
         function updateVideoCounter() {
             if (isPlayingAll && currentQueueIndex >= 0) {
-                videoCounter.textContent = `Video ${currentQueueIndex + 1} of ${videoQueue.length}`;
+                videoCounter.textContent = "Video " + (currentQueueIndex + 1) + " of " + videoQueue.length;
                 videoCounter.style.display = 'block';
             } else {
                 videoCounter.style.display = 'none';
@@ -554,14 +554,7 @@ function generateHTML(videos) {
             }
             
             // Set video player iframe with event listener for video end
-            videoPlayer.innerHTML = \`
-                <iframe 
-                    id="youtube-iframe"
-                    src="https://www.youtube.com/embed/\${videoId}?autoplay=1&enablejsapi=1" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-                </iframe>
-            \`;
+            videoPlayer.innerHTML = '<iframe id="youtube-iframe" src="https://www.youtube.com/embed/' + videoId + '?autoplay=1&enablejsapi=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
             
             // Set video information
             videoTitle.textContent = title;
