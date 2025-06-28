@@ -314,6 +314,9 @@ function generateHTML(videos) {
     </footer>
 
     <script>
+        // Embed video data for client-side access
+        const videos = ${JSON.stringify(videos)};
+        
         // Modal functionality
         const videoModal = document.getElementById('video-modal');
         const closeButton = document.querySelector('.close-button');
