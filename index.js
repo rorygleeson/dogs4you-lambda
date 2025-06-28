@@ -629,9 +629,20 @@ function generateHTML(videos) {
         window.addEventListener('load', () => {
             // Small delay to ensure everything is loaded
             setTimeout(() => {
-                // Trigger the Play All button click event
-                playAllButton.click();
-            }, 500);
+                // Directly trigger Play All functionality instead of simulating click
+                // Build the queue
+                buildVideoQueue(videos);
+                
+                // Set play all mode
+                isPlayingAll = true;
+                currentQueueIndex = 0;
+                
+                // Start playing the first video
+                if (videoQueue.length > 0) {
+                    const firstVideo = videoQueue[0];
+                    playVideoFromQueue(0);
+                }
+            }, 1000); // Increased delay to ensure everything is ready
         });
 
     </script>
