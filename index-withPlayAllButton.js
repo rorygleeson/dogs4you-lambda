@@ -625,14 +625,8 @@ function generateHTML(videos) {
 
         }
         
-        // Auto-trigger Play All when page loads
-        window.addEventListener('load', () => {
-            // Small delay to ensure everything is loaded
-            setTimeout(() => {
-                // Trigger the Play All button click event
-                playAllButton.click();
-            }, 500);
-        });
+
+        
 
     </script>
 </body>
