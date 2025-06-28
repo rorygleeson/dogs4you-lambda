@@ -131,6 +131,36 @@ function generateHTML(videos) {
         lastUpdatedText = `Last video updated: ${australiaTime}`;
     }
     
+    // Generate video items HTML
+    let videoItemsHTML = '';
+    
+    if (videos.items && videos.items.length > 0) {
+        videos.items.forEach(video => {
+            const videoId = video.id.videoId;
+            const snippet = video.snippet;
+            const title = snippet.title;
+            const description = snippet.description;
+            const thumbnailUrl = snippet.thumbnails.high.url || snippet.thumbnails.medium.url || snippet.thumbnails.default.url;
+            const publishDate = new Date(snippet.publishedAt);
+            
+            videoItemsHTML += `
+                <div class="video-item" data-video-id="${videoId}" data-title="${title.replace(/"/g, '&quot;')}" data-description="${description.replace(/"/g, '&quot;')}">
+                    <div class="thumbnail-container">
+                        <img class="thumbnail" src="${thumbnailUrl}" alt="${title.replace(/"/g, '&quot;')}">
+                        <div class="play-icon"><i class="fas fa-play-circle"></i></div>
+                    </div>
+                    <div class="video-info">
+                        <h3>${title}</h3>
+                        <p>Uploaded: ${publishDate.toLocaleDateString()}</p>
+                        <span class="played-indicator">Played</span>
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        videoItemsHTML = '<p class="error-message">No dog videos found. Please try again later.</p>';
+    }
+    
     // Complete HTML template
     return `<!DOCTYPE html>
 <html lang="en">
@@ -283,6 +313,7 @@ function generateHTML(videos) {
         </button>
         
         <div id="videos-container" class="videos-grid">
+            ${videoItemsHTML}
         </div>
 
         <div id="video-modal" class="modal">
@@ -376,21 +407,16 @@ function generateHTML(videos) {
         loadWatchedVideosFromCookie();
         
         // Build video queue from all videos
-        function buildVideoQueue(videos) {
+        function buildVideoQueue() {
             videoQueue = [];
-            if (videos.items && videos.items.length > 0) {
-                videos.items.forEach(video => {
-                    const videoId = video.id.videoId;
-                    const snippet = video.snippet;
-                    const title = snippet.title;
-                    const description = snippet.description;
-                    videoQueue.push({
-                        videoId: videoId,
-                        title: title,
-                        description: description
-                    });
+            document.querySelectorAll('.video-item').forEach(item => {
+                videoQueue.push({
+                    element: item,
+                    videoId: item.dataset.videoId,
+                    title: item.dataset.title,
+                    description: item.dataset.description
                 });
-            }
+            });
             return videoQueue;
         }
         
@@ -419,9 +445,9 @@ function generateHTML(videos) {
         }
         
         // Play All button click handler
-        playAllButton.addEventListener("click", () => {
+        playAllButton.addEventListener('click', () => {
             // Build the queue
-            buildVideoQueue(videos);
+            buildVideoQueue();
             
             // Set play all mode
             isPlayingAll = true;
@@ -454,22 +480,74 @@ function generateHTML(videos) {
                 currentQueueIndex = index;
                 const video = videoQueue[index];
                 
+                // Remove current-playing class from all videos
+                document.querySelectorAll('.video-item').forEach(item => {
+                    item.classList.remove('current-playing');
+                });
+                
+                // Add current-playing class to current video
+                video.element.classList.add('current-playing');
+                
                 // Mark video as watched
                 watchedVideos.add(video.videoId);
+                video.element.classList.add('watched');
                 
                 // Save to cookie
                 saveWatchedVideosToCookie();
                 
                 // Open the video in the modal
-                openVideoModal(video.videoId, video.title, video.description);
+                openVideoModal(video.videoId, video.title, video.description, video.element);
                 
                 // Update counter and controls
                 updateVideoCounter();
                 updatePlayerControls();
+                
+                // Scroll to the current video if not visible
+                setTimeout(() => {
+                    const rect = video.element.getBoundingClientRect();
+                    const isVisible = (
+                        rect.top >= 0 &&
+                        rect.left >= 0 &&
+                        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+                    );
+                    
+                    if (!isVisible) {
+                        video.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 500);
             }
         }
         
-
+        // Add click event to all video items
+        document.querySelectorAll('.video-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const videoId = item.dataset.videoId;
+                const title = item.dataset.title;
+                const description = item.dataset.description;
+                
+                // Reset play all mode when clicking individual videos
+                isPlayingAll = false;
+                
+                // Mark video as watched
+                watchedVideos.add(videoId);
+                item.classList.add('watched');
+                
+                // Save to cookie
+                saveWatchedVideosToCookie();
+                
+                // Remove current-playing class from all videos
+                document.querySelectorAll('.video-item').forEach(el => {
+                    el.classList.remove('current-playing');
+                });
+                
+                openVideoModal(videoId, title, description, item);
+                
+                // Update counter and controls for individual video mode
+                updateVideoCounter();
+                updatePlayerControls();
+            });
+        });
         
         // Close modal when clicking close button
         closeButton.addEventListener('click', closeModal);
@@ -482,7 +560,7 @@ function generateHTML(videos) {
         });
         
         // Open modal and play video
-        function openVideoModal(videoId, title, description) {
+        function openVideoModal(videoId, title, description, videoItem) {
             // Clear any existing timers
             if (videoEndTimer) {
                 clearTimeout(videoEndTimer);
@@ -619,12 +697,24 @@ function generateHTML(videos) {
             // Reset play all mode
             isPlayingAll = false;
             
-
+            // Remove current-playing class from all videos
+            document.querySelectorAll('.video-item').forEach(item => {
+                item.classList.remove('current-playing');
+            });
         }
         
-
+        // Apply watched status to videos on page load
+        function applyWatchedStatus() {
+            document.querySelectorAll('.video-item').forEach(item => {
+                const videoId = item.dataset.videoId;
+                if (watchedVideos.has(videoId)) {
+                    item.classList.add('watched');
+                }
+            });
+        }
         
-
+        // Apply watched status when page loads
+        applyWatchedStatus();
     </script>
 </body>
 </html>`;
